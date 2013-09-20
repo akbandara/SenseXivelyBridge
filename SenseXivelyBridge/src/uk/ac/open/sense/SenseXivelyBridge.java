@@ -45,6 +45,9 @@ public class SenseXivelyBridge implements HttpHandler{
 		
 	}
 
+	/*
+	 * Utility method to convert InputStream to string
+	 */
 	public static String readInputStream (InputStream is) {
 	    java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
 	    return s.hasNext() ? s.next() : "";	
