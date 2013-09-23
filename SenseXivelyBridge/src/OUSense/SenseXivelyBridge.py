@@ -7,21 +7,32 @@ Created on Sep 23, 2013
 import time
 import http.server
 import socketserver
+import xively
+import random
 
 
 HOST_NAME = 'dhcp-137-108-49-48.open.ac.uk' # !!!REMEMBER TO CHANGE THIS!!!
 PORT_NUMBER = 8080 # Maybe set this to 9000.
 
+XIVELY_API_KEY = "0AwffBaMPwgR53EnS0mUz1XDxsoGzcL1z01SqxtXwgjIDXhj"
+XIVELY_FEED_ID = 1198834905
 
 class SenseXivelyBridge(http.server.CGIHTTPRequestHandler):
-
+    
     def do_POST(self):
         print("Command = %s" % self.command)
-        http.server.CGIHTTPRequestHandler.do_POST(self)
+        api = xively.XivelyAPIClient(XIVELY_API_KEY)
+        feed = api.feeds.get(XIVELY_FEED_ID)
+        datastream = feed.datastreams.create(id="Values")
+        datastream.datapoint.create(value=random.randrange(0, 101, 2))
+        #http.server.CGIHTTPRequestHandler.do_POST(self)
         
     def do_GET(self):
         print("Command = %s" % self.command)
-        http.server.CGIHTTPRequestHandler.do_GET(self)
+        api = xively.XivelyAPIClient(XIVELY_API_KEY)
+        feed = api.feeds.get(XIVELY_FEED_ID)
+        print(feed.datastreams.get("Values"))
+        # http.server.CGIHTTPRequestHandler.do_GET(self)
         
         
 if __name__ == '__main__':

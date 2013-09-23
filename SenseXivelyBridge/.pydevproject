@@ -7,4 +7,7 @@
 </pydev_pathproperty>
 <pydev_property name="org.python.pydev.PYTHON_PROJECT_VERSION">python 3.0</pydev_property>
 <pydev_property name="org.python.pydev.PYTHON_PROJECT_INTERPRETER">python3.3</pydev_property>
+<pydev_pathproperty name="org.python.pydev.PROJECT_EXTERNAL_SOURCE_PATH">
+<path>/Users/akb235/git/xively-python/dist/xively_python-0.1.0_rc2-py2.6.egg</path>
+</pydev_pathproperty>
 </pydev_project>
