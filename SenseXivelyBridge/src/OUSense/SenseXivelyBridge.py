@@ -4,35 +4,93 @@ Created on Sep 23, 2013
 @author: akb235
 '''
 
+import re
 import time
 import http.server
 import socketserver
 import xively
 import random
+import datetime
+import requests
+from urllib.parse import parse_qs
+from OUSense import PyRSS2Gen
 
 
 HOST_NAME = 'dhcp-137-108-49-48.open.ac.uk' # !!!REMEMBER TO CHANGE THIS!!!
 PORT_NUMBER = 8080 # Maybe set this to 9000.
 
-XIVELY_API_KEY = "0AwffBaMPwgR53EnS0mUz1XDxsoGzcL1z01SqxtXwgjIDXhj"
-XIVELY_FEED_ID = 1198834905
+XIVELY_FEED_URL = 'https://xively.com/feeds/'
+XIVELY_API_KEY = 'HE0YpJ81kV6qf0u73006JNRQEMUJLT9LZNuxbemlql8hOcLP'
+XIVELY_FEED_ID = 780923631
 
-class SenseXivelyBridge(http.server.CGIHTTPRequestHandler):
+class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
+
+    def getDataStream(self, feed, streamID):
+        try:
+            datastream = feed.datastreams.get(streamID)
+        except:
+            datastream = feed.datastreams.create(streamID)
+        return datastream
     
     def do_POST(self):
-        print("Command = %s" % self.command)
+        # Read POST data variables
+        length = int(self.headers['content-length'])
+        postvars = parse_qs(self.rfile.read(length),keep_blank_values=1)
+        dataValue = postvars.get(b'description')[0].decode("utf-8")
+        streamID  = postvars.get(b'title')[0].decode("utf-8")
+        feedID  = int(postvars.get(b'feed_name')[0].decode("utf-8"))
+
+        # Initialise Xively API        
         api = xively.XivelyAPIClient(XIVELY_API_KEY)
-        feed = api.feeds.get(XIVELY_FEED_ID)
-        datastream = feed.datastreams.create(id="Values")
-        datastream.datapoint.create(value=random.randrange(0, 101, 2))
+        feed = api.feeds.get(feedID)
+        
+        datastream = self.getDataStream(feed, streamID)
+        datastream.current_value = dataValue
+        datastream.at = datetime.datetime.now()
+        try:
+            print("Updating data stream (%s) to: %s @ %s" % (streamID, datastream.current_value, datastream.at))
+            datastream.update()
+            self.sendRSSResponse(feed, streamID)
+        except requests.HTTPError as e:
+            print("HTTPError({0}): {1}".format(e.errno, e.strerror))
+        
         #http.server.CGIHTTPRequestHandler.do_POST(self)
+    
+    def sendRSSResponse(self, feed, streamID):
+        
+        feedURL = XIVELY_FEED_URL + str(feed.id)
+        
+        dataItems = []
+        
+        #Retrieve the data items of the feed / data stream
+        dataStream = self.getDataStream(feed, streamID)
+        dataPoints = list(dataStream.datapoints.history(end=datetime.datetime.now(),duration='1day'))
+        for datapoint in dataPoints:
+            dataItems.append(PyRSS2Gen.RSSItem(title = 'Feed = {0}, Channel = {1} @ {2}'.format(feed.id, streamID, datapoint.at), 
+                                               link = feedURL,
+                                               description = str(datapoint.value),
+                                               guid = '',
+                                               pubDate = datapoint.at))
+        
+        #Generate RSS document for data stream
+        rss = PyRSS2Gen.RSS2(title = 'Xively data feed',
+                             link = feedURL,
+                             description = 'Data feed generated for Feed = {0}, Channel = {1}'.format(feed.id, streamID),
+                             lastBuildDate = datetime.datetime.now(),
+                             items = dataItems)
+        self.send_response(200)
+        self.send_header('Content-type', 'application/rss+xml')
+        rss.write_xml(self.wfile)
         
     def do_GET(self):
-        print("Command = %s" % self.command)
+        feedID = re.search('xively/(.+?)_(.+?)\.rss', self.path).group(1)
+        streamID = re.search('xively/(.+?)_(.+?)\.rss', self.path).group(2)
+        print("Reading FeedName = %s, Channel = %s" % (feedID, streamID))
+
         api = xively.XivelyAPIClient(XIVELY_API_KEY)
-        feed = api.feeds.get(XIVELY_FEED_ID)
-        print(feed.datastreams.get("Values"))
-        # http.server.CGIHTTPRequestHandler.do_GET(self)
+        feed = api.feeds.get(feedID)
+        self.sendRSSResponse(feed, streamID)
+        
         
         
 if __name__ == '__main__':
