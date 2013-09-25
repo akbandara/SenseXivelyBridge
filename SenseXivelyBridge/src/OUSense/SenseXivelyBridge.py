@@ -9,7 +9,6 @@ import time
 import http.server
 import socketserver
 import xively
-import random
 import datetime
 import requests
 from urllib.parse import parse_qs
@@ -40,19 +39,21 @@ class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
         streamID  = postvars.get(b'title')[0].decode("utf-8")
         feedID  = int(postvars.get(b'feed_name')[0].decode("utf-8"))
 
-        # Initialise Xively API        
-        api = xively.XivelyAPIClient(XIVELY_API_KEY)
-        feed = api.feeds.get(feedID)
-        
-        datastream = self.getDataStream(feed, streamID)
-        datastream.current_value = dataValue
-        datastream.at = datetime.datetime.now()
         try:
+            # Initialise Xively API        
+            api = xively.XivelyAPIClient(XIVELY_API_KEY)
+            feed = api.feeds.get(feedID)
+            
+            datastream = self.getDataStream(feed, streamID)
+            datastream.current_value = dataValue
+            datastream.at = datetime.datetime.now()
+
             print("Updating data stream (%s) to: %s @ %s" % (streamID, datastream.current_value, datastream.at))
             datastream.update()
             self.sendRSSResponse(feed, streamID)
         except requests.HTTPError as e:
-            print("HTTPError({0}): {1}".format(e.errno, e.strerror))
+            print("HTTPError({0}): {1}".format(e.code, e.reason))
+            
         
         #http.server.CGIHTTPRequestHandler.do_POST(self)
     
@@ -83,13 +84,17 @@ class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
         rss.write_xml(self.wfile)
         
     def do_GET(self):
-        feedID = re.search('xively/(.+?)_(.+?)\.rss', self.path).group(1)
-        streamID = re.search('xively/(.+?)_(.+?)\.rss', self.path).group(2)
-        print("Reading FeedName = %s, Channel = %s" % (feedID, streamID))
-
-        api = xively.XivelyAPIClient(XIVELY_API_KEY)
-        feed = api.feeds.get(feedID)
-        self.sendRSSResponse(feed, streamID)
+        try:
+            feedID = re.search('xively/(.+?)_(.+?)\.rss', self.path).group(1)
+            streamID = re.search('xively/(.+?)_(.+?)\.rss', self.path).group(2)
+            print("Reading FeedName = %s, Channel = %s" % (feedID, streamID))
+    
+            api = xively.XivelyAPIClient(XIVELY_API_KEY)
+            feed = api.feeds.get(feedID)
+            self.sendRSSResponse(feed, streamID)
+        except requests.HTTPError as e:
+            print("HTTPError({0}): {1}".format(e.code, e.reason))
+            
         
         
         
