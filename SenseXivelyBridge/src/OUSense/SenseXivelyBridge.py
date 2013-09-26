@@ -20,7 +20,6 @@ PORT_NUMBER = 8080 # Maybe set this to 9000.
 
 XIVELY_FEED_URL = 'https://xively.com/feeds/'
 XIVELY_API_KEY = 'HE0YpJ81kV6qf0u73006JNRQEMUJLT9LZNuxbemlql8hOcLP'
-XIVELY_FEED_ID = 780923631
 
 class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
 
