@@ -48,11 +48,15 @@ class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
             datastream.current_value = dataValue
             datastream.at = datetime.datetime.now()
 
-            print("Updating data stream (%s) to: %s @ %s" % (streamID, datastream.current_value, datastream.at))
             datastream.update()
             self.sendRSSResponse(feed, streamID)
         except requests.HTTPError as e:
-            print("HTTPError({0}): {1}".format(e.code, e.reason))
+            print("HTTPError: {0}".format(e))
+        except Exception as e:
+            print("Uncaught exception: {0}".format(e))
+            raise
+        else:
+            print("Updated data stream (%s) to: %s @ %s" % (streamID, datastream.current_value, datastream.at))
             
         
         #http.server.CGIHTTPRequestHandler.do_POST(self)
