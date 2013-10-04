@@ -1,0 +1,150 @@
+Sense Configuration Options
+===========================
+
+Sense configuration information is stored in the file .sensesettings.ini that resides in the
+user's home folder (the location of which is OS-specific).
+
+When Sense wants to read the settings it first looks for that file. If the file is missing it
+attempts to load settings from .sensesettings.ini located in the installation folder, and uses
+whatever it finds there to create the user's .sensesettings.ini. This means that Sense can
+be shipped with default settings that can subsequently be changed on a per user basis.
+
+It follows that there is a subtle difference between there being no user ini file and that file
+being empty. If the user file is empty there are no settings; if the user file doesn't exist
+then Sense will always attempt to recreate it using the version from the installation folder.
+
+Settings in the configuration file take the form:
+
+key=value
+
+The valid keys are listed below. For each key the valid values are defined. Note that keys are
+not case sensitive (but values may be).
+
+baudrate
+	If this key is present then its value defines the baud rate to use for the OU/Sense board.
+	If this key is absent then the baud rate will be the default defined in Sense. The current
+	baud rate can be seen - and changed - using the shift-click menu of the Sensor Board
+	Watcher. Note that this setting does not affect the baud rate used for Pico boards.
+homedir
+	If this key is present then its value defines the path to the parent of the user's Sense
+	folders. That is, the folder in which Sense will either expect to find a folder called
+	'Sense' or create one. The specified folder must exist - if it doesn't then this entry is
+	ignored. If this key is absent then the standard OS-specific user documents folder is used
+	(for Vista/Win7 this is \Users\<user-name>\documents).
+homedirprefix
+	If this key is present then it defines the name of a folder that sits between the user's
+	home dir (see above) and the Sense folders. So under Vista/Win7, if homedir is absent and
+	homedirprefix is set to 'TU100' then the user's Sense folder will be
+	\Users\<user-name>\documents\TU100\Sense.
+portscanningenabled
+	If the value is true or the key is absent then Sense will automatically scan all
+	relevant serial ports to determine whether a sensor board is connected. If the value is
+	anything other than true then Sense will not scan the computer's serial ports.
+proxenabled
+	If this key is present and the value is true then the proxy defined by proxyserver and
+	proxyport will be used. Note that this option is normally configured using the
+	Extras menu in Sense. Has no effect if proxyserver is not defined.
+proxyserver
+	If this key is present then the value will be used as the url of the proxy server to
+	use for all internet access. Note that this option is normally configured using the
+	Extras menu in Sense.
+proxyport
+	If a proxy server is configured (using the proxyserver option) then the value of this
+	option is used as the port number of the proxy server. If a proxy server is configured
+	but this option is absent then port 3128 will be used. Note that this option is normally
+	configured using the Extras menu in Sense.
+rssposturl
+	The value is the full url to be used when posting rss items, or loading rss when no server is
+	specified. If this option is absent then (for the time being) the url
+	http://feedcatcher.njae.me.uk is used.
+sensorconfig-n
+	If present this option specifies the configuration for the sensor whose index is n. There
+	may be several sensorconfig-n lines in the .ini file; each line specifies the configuration
+	for a different sensor, as indicated by the value of n. The value of the option comprises
+	a number of comma-separated fields:
+		<con>,<bool>,<con-name>,<bool-name>
+		
+		<con> must have the value Y or N. If Y then this sensor can return a range of values.
+		If N then this sensor can only return boolean values and the second field must be Y.
+		<bool> must have the value Y or N. If Y then this sensor can return a boolean value.
+		If N then this sensor cannot be treated as a boolean and the first field must be Y.
+		<con-name> is the name for this sensor in the watcher and in blocks that return a
+		range of values.
+		<bool-name> is the name for this sensor in blocks that return boolean values. Ignored
+		if <bool> is N.
+		
+		Examples:
+		
+		sensorconfig-4=Y,N,voltage,null
+			Configure sensor 4 to return a range of values, cannot be treated as a boolean
+		
+		sensorconfig-3=Y,Y,level,level reached
+			Configure sensor 3 to return a range of values or be treated as a boolean
+			
+		sensorconfig-6=N,Y,null,switch
+			Configure sensor 6 as a boolean input, e.g. a button		
+sensorcount
+	If absent Sense displays the names all of all the sensors supported by the protocol handler.
+	The value of this option must be a number. Values greater than the number of sensors
+	supported by the protocol handler are ignored. The number specifies the number of sensors
+	that will be displayed in block menus and in the sensor board watcher.
+signonurlsubstring
+	If a http get or post redirects to a url that contains the value of this option as a
+	substring then the redirection will be assumed to be a sign-on request. If this option
+	is absent then the string https://msds.open.ac.uk/signon/ is used as the substring.
+signonposturl
+	The value of this option is the url to which sign-on credentials are posted. If this
+	option is absent the url https://msds.open.ac.uk/signon/SAMS001A.aspx is used.
+useoldsensorprotocol
+	If present and the value is true then Sense will use the prototype Sense board protocol
+	(board id = 0). The prototype protocol has been superseded.
+visibledrives
+	A comma-separated list of the drives that are to be shown in file dialog boxes. If absent
+	then all drives are shown.
+
+Note: In the unusual situation that the Scratch plugin cannot be loaded, then the .sensesettings.ini
+file located in the Sense program folder will be used as if it is the user's settings file.
+
+Curl Plugin
+===========
+
+The Curl Plugin provides access to the curl libraries, which are used for https accesses in Sense.
+
+Windows
+-------
+
+The following files must be in the same folder as the VM executable:
+
+CurlPlugin.dll (the plug-in itself)
+libcurl-4.dll (the curl library)
+libssl32.dll (open ssl library)
+libeay32.ddl (encryption functions)
+CurlPluginCaCert.pem (Cerfificate Authority certificates)
+
+These files are in curl-plugin-windows.zip.
+
+OSX
+---
+
+The plugin lives in a bundle called CurlPlugin.bundle. This folder must be placed in the Resources folder
+of the Scratch.app bundle folder. The CurlPluginCaCert.pem file must be in the same folder as the Scratch.app bundle.
+
+These files are in curl-plugin-osx.zip.
+
+linux
+----- 
+
+The plugin is a shared library called CurlPlugin. It needs to reside alongside the other Squeak plugins -
+in the standard installation that is *not* the Scratch folder but a Squeak folder inside Scratch. The command
+line used to start scratch will have an option specifying the plugin folder.
+
+The CurlPluginCaCert.pem file must be in the Scratch folder.
+
+These files are in curl-plugin-linux.zip.
+
+Note that the plugin has dependencies on curl, libssl, etc. To check that you have all the libraries you
+need, cd to the folder holding CurlPlugin and do:
+
+ldd CurlPlugin
+
+If any libraries are shown as missing you will need to install them.
