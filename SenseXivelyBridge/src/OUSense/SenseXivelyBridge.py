@@ -19,7 +19,13 @@ HOST_NAME = 'dhcp-137-108-49-48.open.ac.uk' # !!!REMEMBER TO CHANGE THIS!!!
 PORT_NUMBER = 8080 # Maybe set this to 9000.
 
 XIVELY_FEED_URL = 'https://xively.com/feeds/'
-XIVELY_API_KEY = 'HE0YpJ81kV6qf0u73006JNRQEMUJLT9LZNuxbemlql8hOcLP'
+
+#OU_Distance API Key
+#XIVELY_API_KEY = 'HE0YpJ81kV6qf0u73006JNRQEMUJLT9LZNuxbemlql8hOcLP'
+
+#BUCL Test Feed API Key
+XIVELY_API_KEY = 'jQJN13Ze9aYEJRq6RMpIyiBtDL0IuoYUCBFdnEXhudfrNuhc'
+
 #XIVELY_FEED_ID = 780923631
 
 class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
