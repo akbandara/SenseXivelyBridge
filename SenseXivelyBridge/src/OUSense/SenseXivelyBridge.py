@@ -15,7 +15,7 @@ from urllib.parse import parse_qs
 from OUSense import PyRSS2Gen
 
 
-HOST_NAME = 'dhcp-137-108-49-48.open.ac.uk' # !!!REMEMBER TO CHANGE THIS!!!
+HOST_NAME = 'localhost'
 PORT_NUMBER = 8080 # Maybe set this to 9000.
 
 XIVELY_FEED_URL = 'https://xively.com/feeds/'
@@ -24,9 +24,10 @@ XIVELY_FEED_URL = 'https://xively.com/feeds/'
 #XIVELY_API_KEY = 'HE0YpJ81kV6qf0u73006JNRQEMUJLT9LZNuxbemlql8hOcLP'
 
 #BUCL Test Feed API Key
-XIVELY_API_KEY = 'jQJN13Ze9aYEJRq6RMpIyiBtDL0IuoYUCBFdnEXhudfrNuhc'
+#XIVELY_API_KEY = 'jQJN13Ze9aYEJRq6RMpIyiBtDL0IuoYUCBFdnEXhudfrNuhc'
 
-#XIVELY_FEED_ID = 780923631
+#IOThub Feed API Key
+XIVELY_API_KEY = '5SRGqR6D7H6bkjhdwRuocYpKW0ZSXEzhgzb8U8tl07gESlI4'
 
 class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
 
