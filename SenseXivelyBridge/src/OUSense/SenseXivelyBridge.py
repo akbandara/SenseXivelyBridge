@@ -11,6 +11,7 @@ import socketserver
 import xively
 import datetime
 import requests
+import argparse
 from urllib.parse import parse_qs
 from OUSense import PyRSS2Gen
 
@@ -90,8 +91,10 @@ class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
                              description = 'Data feed generated for Feed = {0}, Channel = {1}'.format(feed.id, streamID),
                              lastBuildDate = datetime.datetime.now(),
                              items = dataItems)
+        
         self.send_response(200)
         self.send_header('Content-type', 'application/rss+xml')
+        self.end_headers()
         rss.write_xml(self.wfile)
         
     def do_GET(self):
@@ -110,6 +113,16 @@ class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
         
         
 if __name__ == '__main__':
+    
+    parser = argparse.ArgumentParser(description="Host and port settings")
+    parser.add_argument('-s', '--server', help='Name/IP for SenseXivelyBridge host server')
+    parser.add_argument('-p', '--port', type=int, help='Port number for SenseXivelyBridge host server')
+    args = parser.parse_args()
+    if args.server:
+        HOST_NAME = args.server
+    if args.port:
+        PORT_NUMBER = args.port
+    
     server_class = socketserver.TCPServer
     httpd = server_class((HOST_NAME, PORT_NUMBER), SenseXivelyBridge)
     print (time.asctime(), "Server Starts - %s:%s" % (HOST_NAME, PORT_NUMBER))
