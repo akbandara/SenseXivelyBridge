@@ -4,7 +4,6 @@ Created on Sep 23, 2013
 @author: akb235
 '''
 
-import re
 import time
 import http.server
 import socketserver
@@ -28,7 +27,8 @@ XIVELY_FEED_URL = 'https://xively.com/feeds/'
 #XIVELY_API_KEY = 'jQJN13Ze9aYEJRq6RMpIyiBtDL0IuoYUCBFdnEXhudfrNuhc'
 
 #IOThub Feed API Key
-XIVELY_API_KEY = '5SRGqR6D7H6bkjhdwRuocYpKW0ZSXEzhgzb8U8tl07gESlI4'
+XIVELY_READ_API_KEY = '5SRGqR6D7H6bkjhdwRuocYpKW0ZSXEzhgzb8U8tl07gESlI4'
+XIVELY_UPDATE_API_KEY = 'fsPGDjvqoL3WIwHG9oAbb4OfiXKfS6zzXJea0e3REu0qH3e3'
 
 class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
 
@@ -43,33 +43,45 @@ class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
         # Read POST data variables
         length = int(self.headers['content-length'])
         postvars = parse_qs(self.rfile.read(length),keep_blank_values=1)
-        dataValue = postvars.get(b'description')[0].decode("utf-8")
-        streamID  = postvars.get(b'title')[0].decode("utf-8")
+        postAction = postvars.get(b'action')[0].decode("utf-8")
+        streamID  = postvars.get(b'channel')[0].decode("utf-8")
         feedID  = int(postvars.get(b'feed_name')[0].decode("utf-8"))
 
         try:
             # Initialise Xively API        
-            api = xively.XivelyAPIClient(XIVELY_API_KEY)
-            feed = api.feeds.get(feedID)
-            
-            datastream = self.getDataStream(feed, streamID)
-            datastream.current_value = dataValue
-            datastream.at = datetime.datetime.now()
+            if (postAction == 'load'):
+                api = xively.XivelyAPIClient(XIVELY_READ_API_KEY)
+                feed = api.feeds.get(feedID)
+                duration = postvars.get(b'duration')[0].decode("utf-8")
+                self.sendRSSResponse(feed, streamID, duration)
 
-            datastream.update()
-            self.sendRSSResponse(feed, streamID)
+            elif (postAction == 'update'):
+                api = xively.XivelyAPIClient(XIVELY_UPDATE_API_KEY)
+                feed = api.feeds.get(feedID)
+                dataValue = postvars.get(b'value')[0].decode("utf-8")
+                datastream = self.getDataStream(feed, streamID)
+                datastream.current_value = dataValue
+                datastream.at = datetime.datetime.now()
+                datastream.update()
+                self.sendRSSResponse(feed, streamID, '1minute')
+            else:
+                self.sendRSSResponse(feed, streamID, '1minute')
+                
         except requests.HTTPError as e:
             print("HTTPError: {0}".format(e))
         except Exception as e:
             print("Uncaught exception: {0}".format(e))
             raise
         else:
-            print("Updated data stream (%s) to: %s @ %s" % (streamID, datastream.current_value, datastream.at))
+            if (postAction == 'update'):
+                print("Updated data stream (%s:%s) to: %s @ %s" % (feedID, streamID, datastream.current_value, datastream.at))
+            elif (postAction == 'load'):
+                print("Loaded data stream (%s:%s) for duration = %s" % (feedID, streamID, duration))
             
         
         #http.server.CGIHTTPRequestHandler.do_POST(self)
     
-    def sendRSSResponse(self, feed, streamID):
+    def sendRSSResponse(self, feed, streamID, valueRange):
         
         feedURL = XIVELY_FEED_URL + str(feed.id)
         
@@ -77,7 +89,7 @@ class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
         
         #Retrieve the data items of the feed / data stream
         dataStream = self.getDataStream(feed, streamID)
-        dataPoints = list(dataStream.datapoints.history(end=datetime.datetime.now(),duration='1day'))
+        dataPoints = list(dataStream.datapoints.history(end=datetime.datetime.now(),duration=valueRange))
         for datapoint in dataPoints:
             dataItems.append(PyRSS2Gen.RSSItem(title = 'Feed = {0}, Channel = {1} @ {2}'.format(feed.id, streamID, datapoint.at), 
                                                link = feedURL,
@@ -97,21 +109,18 @@ class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         rss.write_xml(self.wfile)
         
-    def do_GET(self):
-        try:
-            feedID = re.search('xively/(.+?)_(.+?)\.rss', self.path).group(1)
-            streamID = re.search('xively/(.+?)_(.+?)\.rss', self.path).group(2)
-            print("Reading FeedName = %s, Channel = %s" % (feedID, streamID))
-    
-            api = xively.XivelyAPIClient(XIVELY_API_KEY)
-            feed = api.feeds.get(feedID)
-            self.sendRSSResponse(feed, streamID)
-        except requests.HTTPError as e:
-            print("HTTPError({0}): {1}".format(e.code, e.reason))
-            
-        
-        
-        
+#     def do_GET(self):
+#         try:
+#             feedID = re.search('xively/(.+?)_(.+?)\.rss', self.path).group(1)
+#             streamID = re.search('xively/(.+?)_(.+?)\.rss', self.path).group(2)
+#             print("Reading FeedName = %s, Channel = %s" % (feedID, streamID))
+#     
+#             api = xively.XivelyAPIClient(XIVELY_API_KEY)
+#             feed = api.feeds.get(feedID)
+#             self.sendRSSResponse(feed, streamID)
+#         except requests.HTTPError as e:
+#             print("HTTPError({0}): {1}".format(e.code, e.reason))
+
 if __name__ == '__main__':
     
     parser = argparse.ArgumentParser(description="Host and port settings")
