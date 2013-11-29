@@ -46,7 +46,8 @@ class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
         postAction = postvars.get(b'action')[0].decode("utf-8")
         streamID  = postvars.get(b'channel')[0].decode("utf-8")
         feedID  = int(postvars.get(b'feed_name')[0].decode("utf-8"))
-
+        print("Received Request %s - %s:%s" % (postAction, feedID, streamID))
+        
         try:
             # Initialise Xively API        
             if (postAction == 'load'):
