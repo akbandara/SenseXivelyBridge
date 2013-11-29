@@ -1,4 +1,5 @@
 include *.txt
+include *.bat
 recursive-include src *.py
 recursive-include lib *.egg
-recursive-include sense *.image
+recursive-include sense *.image *.bat
