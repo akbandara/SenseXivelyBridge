@@ -13,6 +13,7 @@ import requests
 import argparse
 from urllib.parse import parse_qs
 from OUSense import PyRSS2Gen
+import threading
 
 
 HOST_NAME = 'localhost'
@@ -64,6 +65,7 @@ class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
                 datastream.current_value = dataValue
                 datastream.at = datetime.datetime.now()
                 datastream.update()
+                # threading.Thread(target=datastream.update).start()
                 self.sendRSSResponse(feed, streamID, '1minute')
             else:
                 self.sendRSSResponse(feed, streamID, '1minute')
