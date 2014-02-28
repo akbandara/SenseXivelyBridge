@@ -13,7 +13,16 @@ import requests
 import argparse
 from urllib.parse import parse_qs
 from OUSense import PyRSS2Gen
+import threading
 
+import urllib.request
+import urllib.parse
+import json
+import configparser
+import os.path 
+import uuid
+import hmac
+CONFIG_FILE = os.path.expanduser("~/.sense_xively.config")
 
 HOST_NAME = 'localhost'
 PORT_NUMBER = 8080 # Maybe set this to 9000.
@@ -29,6 +38,39 @@ XIVELY_FEED_URL = 'https://xively.com/feeds/'
 #IOThub Feed API Key
 XIVELY_READ_API_KEY = '5SRGqR6D7H6bkjhdwRuocYpKW0ZSXEzhgzb8U8tl07gESlI4'
 XIVELY_UPDATE_API_KEY = 'fsPGDjvqoL3WIwHG9oAbb4OfiXKfS6zzXJea0e3REu0qH3e3'
+
+XIVELY_ACTIVATION_API_KEY = '???'
+PRODUCT_ID = '???'
+
+# http://stackoverflow.com/questions/17250056/xively-how-to-activate-a-device-with-the-python-api
+
+if os.path.isfile(CONFIG_FILE):
+    config = configparser.ConfigParser()
+    config.read(CONFIG_FILE)
+    if 'keys' in config:
+        if 'XIVELY_READ_API_KEY' in config['keys']:
+            XIVELY_READ_API_KEY = config['keys']['XIVELY_READ_API_KEY']
+        if 'XIVELY_UPDATE_API_KEY' in config['keys']:
+            XIVELY_UPDATE_API_KEY = config['keys']['XIVELY_UPDATE_API_KEY']
+else:
+    serial_number =  uuid.uuid1()
+    request = urllib.request.Request('https://api.xively.com/v2/products/{}/devices'.format(PRODUCT_ID), 
+        data = urllib.parse.urlencode({'devices': [{'serial': serial_number}]}),
+        headers = {'X-ApiKey': XIVELY_ACTIVATION_API_KEY})
+    response = urllib.request.urlopen(request).read().decode()
+    result = json.loads(response)
+    activation_code = hmac.new(a2b_hex(PRODUCT_ID), serial_number, sha1).hexdigest()
+    request = urllib.request.Request('http://api.xively.com/v2/devices/{}/activate'.format(activation_code), 
+                                 headers = {'X-ApiKey': XIVELY_ACTIVATION_API_KEY})
+    response = urllib.request.urlopen(request).read().decode()
+    result = json.loads(response)
+    XIVELY_UPDATE_API_KEY = result['apikey']
+    XIVELY_READ_API_KEY = result['apikey']
+    config = configparser.ConfigParser()
+    config['keys'] = {'XIVELY_READ_API_KEY': XIVELY_READ_API_KEY, 'XIVELY_UPDATE_API_KEY': XIVELY_UPDATE_API_KEY}
+    with open(CONFIG_FILE, 'w') as configfile:
+        config.write(configfile)
+
 
 class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
 
@@ -64,6 +106,7 @@ class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
                 datastream.current_value = dataValue
                 datastream.at = datetime.datetime.now()
                 datastream.update()
+                # threading.Thread(target=datastream.update).start()
                 self.sendRSSResponse(feed, streamID, '1minute')
             else:
                 self.sendRSSResponse(feed, streamID, '1minute')
