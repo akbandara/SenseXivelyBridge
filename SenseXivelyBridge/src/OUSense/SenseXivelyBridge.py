@@ -39,37 +39,45 @@ XIVELY_FEED_URL = 'https://xively.com/feeds/'
 XIVELY_READ_API_KEY = '5SRGqR6D7H6bkjhdwRuocYpKW0ZSXEzhgzb8U8tl07gESlI4'
 XIVELY_UPDATE_API_KEY = 'fsPGDjvqoL3WIwHG9oAbb4OfiXKfS6zzXJea0e3REu0qH3e3'
 
-XIVELY_ACTIVATION_API_KEY = '???'
-PRODUCT_ID = '???'
+XIVELY_MASTER_API_KEY = 'WEGSMT5oECSICidhqSB76S7m7eiPv4yxl9sIrUfpetrCaVnK'
+SENSE_PRODUCT_CODE = 'oX_o7uPqUie-07wBi4m0'
 
-# http://stackoverflow.com/questions/17250056/xively-how-to-activate-a-device-with-the-python-api
+# http://stackoverflow.com/ques'WEGSMT5oECSICidhqSB76S7m7eiPv4yxl9sIrUfpetrCaVnK'tions/17250056/xively-how-to-activate-a-device-with-the-python-api
 
-if os.path.isfile(CONFIG_FILE):
+def read_config():
     config = configparser.ConfigParser()
     config.read(CONFIG_FILE)
-    if 'keys' in config:
-        if 'XIVELY_READ_API_KEY' in config['keys']:
-            XIVELY_READ_API_KEY = config['keys']['XIVELY_READ_API_KEY']
-        if 'XIVELY_UPDATE_API_KEY' in config['keys']:
-            XIVELY_UPDATE_API_KEY = config['keys']['XIVELY_UPDATE_API_KEY']
-else:
-    serial_number =  uuid.uuid1()
-    request = urllib.request.Request('https://api.xively.com/v2/products/{}/devices'.format(PRODUCT_ID), 
-        data = urllib.parse.urlencode({'devices': [{'serial': serial_number}]}),
-        headers = {'X-ApiKey': XIVELY_ACTIVATION_API_KEY})
-    response = urllib.request.urlopen(request).read().decode()
-    result = json.loads(response)
-    activation_code = hmac.new(a2b_hex(PRODUCT_ID), serial_number, sha1).hexdigest()
-    request = urllib.request.Request('http://api.xively.com/v2/devices/{}/activate'.format(activation_code), 
-                                 headers = {'X-ApiKey': XIVELY_ACTIVATION_API_KEY})
-    response = urllib.request.urlopen(request).read().decode()
-    result = json.loads(response)
-    XIVELY_UPDATE_API_KEY = result['apikey']
-    XIVELY_READ_API_KEY = result['apikey']
+    if 'mood' in config:
+        mood_api = xively.XivelyAPIClient(config['mood']['device_api_key'])
+        mood_feed = mood_api.feeds.get(config['mood']['feed_id'])
+        print (time.asctime(), "Opened device with feedID {}".format(config['mood']['feed_id']))
+        return mood_api, mood_feed
+    raise EnvironmentError('Invalid config file {}'.format(CONFIG_FILE))
+
+def create_mood_device():
+    mood_device_serial_number = uuid.uuid1()
+    sn = mood_device_serial_number.hex
+    master_api = xively.XivelyAPIClient(XIVELY_MASTER_API_KEY)
+    master_client = xively.Client(XIVELY_MASTER_API_KEY)
+
+    # create the device
+    device_data = {'devices': [{'serial': sn}]}
+    response = master_client.post('/v2/products/{}/devices'.format(SENSE_PRODUCT_CODE), data=device_data)
+
+    # find the just-created device
+    senseboards = master_client.get('/v2/products/{}/devices?per_page=1000'.format(SENSE_PRODUCT_CODE)).json()['devices']
+    mood_voter = [s for s in senseboards if s['serial'] == sn][0]
+
+    #activate the device
+    response = master_client.get('/v2/devices/{}/activate'.format(mood_voter['activation_code'])).json()
+    mood_device_api_key = response['apikey']
+    mood_device_feed_id = response['feed_id']
+
     config = configparser.ConfigParser()
-    config['keys'] = {'XIVELY_READ_API_KEY': XIVELY_READ_API_KEY, 'XIVELY_UPDATE_API_KEY': XIVELY_UPDATE_API_KEY}
+    config['mood'] = {'device_api_key': mood_device_api_key, 'feed_id': mood_device_feed_id}
     with open(CONFIG_FILE, 'w') as configfile:
         config.write(configfile)
+    print (time.asctime(), "Created new device {} with feedID {}".format(mood_device_serial_number, mood_device_feed_id))
 
 
 class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
@@ -87,20 +95,20 @@ class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
         postvars = parse_qs(self.rfile.read(length),keep_blank_values=1)
         postAction = postvars.get(b'action')[0].decode("utf-8")
         streamID  = postvars.get(b'channel')[0].decode("utf-8")
-        feedID  = int(postvars.get(b'feed_name')[0].decode("utf-8"))
-        print("Received Request %s - %s:%s" % (postAction, feedID, streamID))
+        # feedID  = int(postvars.get(b'feed_name')[0].decode("utf-8"))
+        print("Received Request %s - %s" % (postAction, streamID))
         
         try:
             # Initialise Xively API        
             if (postAction == 'load'):
-                api = xively.XivelyAPIClient(XIVELY_READ_API_KEY)
-                feed = api.feeds.get(feedID)
+                # api = xively.XivelyAPIClient(XIVELY_READ_API_KEY)
+                # feed = api.feeds.get(feedID)
                 duration = postvars.get(b'duration')[0].decode("utf-8")
                 self.sendRSSResponse(feed, streamID, duration)
 
             elif (postAction == 'update'):
-                api = xively.XivelyAPIClient(XIVELY_UPDATE_API_KEY)
-                feed = api.feeds.get(feedID)
+                # api = xively.XivelyAPIClient(XIVELY_UPDATE_API_KEY)
+                # feed = api.feeds.get(feedID)
                 dataValue = postvars.get(b'value')[0].decode("utf-8")
                 datastream = self.getDataStream(feed, streamID)
                 datastream.current_value = dataValue
@@ -118,9 +126,9 @@ class SenseXivelyBridge(http.server.BaseHTTPRequestHandler):
             raise
         else:
             if (postAction == 'update'):
-                print("Updated data stream (%s:%s) to: %s @ %s" % (feedID, streamID, datastream.current_value, datastream.at))
+                print("Updated data stream (%s) to: %s @ %s" % (streamID, datastream.current_value, datastream.at))
             elif (postAction == 'load'):
-                print("Loaded data stream (%s:%s) for duration = %s" % (feedID, streamID, duration))
+                print("Loaded data stream (%s) for duration = %s" % (streamID, duration))
             
         
         #http.server.CGIHTTPRequestHandler.do_POST(self)
@@ -176,6 +184,12 @@ if __name__ == '__main__':
     if args.port:
         PORT_NUMBER = args.port
     
+    try:
+        api, feed = read_config()
+    except EnvironmentError:
+        create_mood_device()
+        api, feed = read_config()
+
     server_class = socketserver.TCPServer
     httpd = server_class((HOST_NAME, PORT_NUMBER), SenseXivelyBridge)
     print (time.asctime(), "Server Starts - %s:%s" % (HOST_NAME, PORT_NUMBER))
