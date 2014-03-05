@@ -3,9 +3,9 @@
 from distutils.core import setup
 
 setup(name='SenseXivelyBridge',
-      version='1.0',
+      version='1.1',
       description='Sense-Xively Bridge',
-      author='Arosha K. Bandara',
+      author='Arosha Bandara and Neil Smith',
       author_email='arosha.bandara@open.ac.uk',
       url='http://sense.open.ac.uk',
       packages=['OUSense'],
